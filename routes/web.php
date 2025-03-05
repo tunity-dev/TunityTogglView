@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\TogglAPIController;
 use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
 
@@ -23,4 +24,8 @@ Route::middleware(['auth'])->group(function () {
 require __DIR__.'/auth.php';
 
 
-Route::get('api-test', [\App\Http\Controllers\TogglAPIController::class, 'getActiveUsers']);
+Route::get('/GetActiveUsers', [TogglAPIController::class, 'getActiveUsers']);
+
+Route::get('/getDetailedTimeEntries', [TogglAPIController::class, 'getDetailedTimeEntries']);
+
+
