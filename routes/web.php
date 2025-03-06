@@ -1,13 +1,17 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\CompleteRegistrationController;
 
 Route::redirect('/', '/login')->name('home');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
+
+Route::get('/complete-registration', [CompleteRegistrationController::class, 'showForm'])->name('complete.registration');
+Route::post('/complete-registration', [CompleteRegistrationController::class, 'saveDetails']);
 
 // Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'ensure.email.domain'])->group(function () {

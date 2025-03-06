@@ -122,9 +122,19 @@ new #[Layout('components.layouts.auth')] class extends Component {
             </div>
 
             <!-- Submit Button -->
-            <div class="flex flex-row gap-4 mt-5">
-                <flux:button variant="primary" type="submit" class="w-full rounded-md text-white bg-stone-700 border-1 hover:bg-amber-700">{{ __('Google') }}</flux:button>
-                <flux:button variant="primary" type="submit" class="w-full rounded-md bg-orange-500 text-white hover:bg-amber-700">{{ __('Log in') }}</flux:button>
+            <div>
+                <div class="flex flex-row gap-4 mt-5">
+                    <!-- Inloggen via Google -->
+                    <flux:button variant="primary" type="button" class="w-full rounded-md text-white bg-stone-700 border-1 hover:bg-amber-700" wire:click="loginWithGoogle">
+                        {{ __('Log in with Google') }}
+                    </flux:button>
+                
+                    <!-- Inloggen via Email -->
+                    <flux:button variant="primary" type="submit" class="w-full rounded-md bg-orange-500 text-white hover:bg-amber-700">
+                        {{ __('Log in') }}
+                    </flux:button>
+                </div>
+                
             </div>
         </form>
 

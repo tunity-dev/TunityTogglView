@@ -17,22 +17,46 @@ new #[Layout('components.layouts.auth')] class extends Component {
     /**
      * Handle an incoming registration request.
      */
+    // public function register(): void
+    // {
+    //     $validated = $this->validate([
+    //         'name' => ['required', 'string', 'max:255'],
+    //         'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
+    //         'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+    //     ]);
+
+    //     $validated['password'] = Hash::make($validated['password']);
+
+    //     event(new Registered(($user = User::create($validated))));
+
+    //     Auth::login($user);
+
+    //     $this->redirect(route('dashboard', absolute: false), navigate: true);
+    // }
+ 
     public function register(): void
-    {
-        $validated = $this->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
-        ]);
+{
+    // Valideer de ingevoerde gegevens
+    $validated = $this->validate([
+        'name' => ['required', 'string', 'max:255'],
+        'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
+        'password' => ['required', 'string', 'confirmed', Rules\Password::defaults()],
+    ]);
 
-        $validated['password'] = Hash::make($validated['password']);
+    // Maak het wachtwoord hash
+    $validated['password'] = Hash::make($validated['password']);
 
-        event(new Registered(($user = User::create($validated))));
+    // Maak de gebruiker aan
+    $user = User::create($validated);
 
-        Auth::login($user);
+    // Log de gebruiker in
+    Auth::login($user);
 
-        $this->redirect(route('dashboard', absolute: false), navigate: true);
-    }
+    // Redirect de gebruiker naar de volgende stap
+    session()->flash('status', 'Je registratie is voltooid! Vul nu je contract type en Toggl ID in.');
+    $this->redirect(route('complete.registration')); 
+}
+
 }; ?>
 
 <div class="flex items-center justify-center min-h-screen bg-black-background">
@@ -92,10 +116,18 @@ new #[Layout('components.layouts.auth')] class extends Component {
                 placeholder="Confirm password"
             />
 
-            <div class="flex flex-row gap-4 pt-5">
-                <flux:button variant="primary" type="submit" class="w-full rounded-md text-white bg-stone-700 border-1 hover:bg-amber-700">{{ __('Google') }}</flux:button>
-                <flux:button variant="primary" type="submit" class="w-full rounded-md bg-orange-500 text-white hover:bg-amber-700">{{ __('Log in') }}</flux:button>
+            <div class="flex flex-row gap-4 mt-5">
+                <!-- Inloggen via Google -->
+                <flux:button variant="primary" type="button" class="w-full rounded-md text-white bg-stone-700 border-1 hover:bg-amber-700" wire:click="loginWithGoogle">
+                    {{ __('Sign up with Google') }}
+                </flux:button>
+            
+                <!-- Inloggen via Email -->
+                <flux:button variant="primary" type="submit" class="w-full rounded-md bg-orange-500 text-white hover:bg-amber-700">
+                    {{ __('Sign up') }}
+                </flux:button>
             </div>
+            
         </form>
 
         <div class="space-x-1 text-center text-sm text-zinc-600 dark:text-zinc-400 mt-4">
