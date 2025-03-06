@@ -28,6 +28,7 @@ class UserFactory extends Factory
             'is_admin' => false,
             'contract_id' => Contract::inRandomOrder()->first()->id ?? 1,
             'toggl_user_id' => $this->faker->uuid,
+            'api_token' => Str::random(20),
             'name' => $this->faker->name,
             'email' => $this->faker->unique()->safeEmail,
             'email_verified_at' => now(),
