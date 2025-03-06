@@ -27,5 +27,8 @@ require __DIR__.'/auth.php';
 Route::get('/GetActiveUsers', [TogglAPIController::class, 'getActiveUsers']);
 Route::get('/GetActiveUsersIds', [TogglAPIController::class, 'getActiveUserIds']);
 
+Route::get('/get-api-tokens', [TogglAPIController::class, 'getApiTokensForActiveUsers']);
+Route::get('/current-entries', [TogglAPIController::class, 'showCurrentTimeEntries']);
+
 Route::get('/getDetailedTimeEntries', [TogglAPIController::class, 'getDetailedTimeEntries']);
 

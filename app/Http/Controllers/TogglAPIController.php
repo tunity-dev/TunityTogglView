@@ -34,6 +34,17 @@ class TogglAPIController extends Controller
         return response()->json($activeUsersIds);
     }
 
+    public function getApiTokensForActiveUsers()
+{
+    // Haal actieve gebruikers op
+    $activeUserIds = $this->togglService->getActiveUserIds();
+
+    // Haal API-tokens op voor deze gebruikers
+    $apiTokens = $this->togglService->getApiTokensForActiveUsers($activeUserIds);
+
+    return response()->json($apiTokens);
+}
+
     public function getDetailedTimeEntries()
     {
         $detailedEntries = $this->togglService->getDetailedTimeEntries();
@@ -72,6 +83,34 @@ class TogglAPIController extends Controller
         });
 
         return view('time_entries_summary', ['userSummaries' => $userSummaries]);
+    }
+
+    public function showCurrentTimeEntries()
+    {
+        $currentTimeEntries = $this->togglService->getCurrentTimeEntriesForAllUsers();
+        $activeUsers = $this->togglService->getActiveUsers();
+
+        $userNames = collect($activeUsers)->pluck('name', 'id')->toArray();
+        $userNamesToggl = collect($activeUsers)->pluck('name', 'toggl_user_id')->toArray();
+
+        // Format de duration in de controller
+        $formattedTimeEntries = [];
+        foreach ($currentTimeEntries as $userId => $data) {
+            $formattedEntry = $data['entry'];
+            if ($formattedEntry && isset($formattedEntry['duration'])) {
+                $formattedEntry['formatted_duration'] = $this->formatDuration($formattedEntry['duration']);
+            }
+            $formattedTimeEntries[$userId] = [
+                'entry' => $formattedEntry,
+                'last_entry_ago' => $data['last_entry_ago']
+            ];
+        }
+
+        return view('current_time_entries', [
+            'currentTimeEntries' => $formattedTimeEntries,
+            'userNames' => $userNames,
+            'userNamesToggl' => $userNamesToggl
+        ]);
     }
 
     private function formatDuration($seconds)
