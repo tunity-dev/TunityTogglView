@@ -8,6 +8,8 @@ use Livewire\Volt\Component;
 
 new class extends Component {
     public string $name = '';
+    public string $api_token = '';
+    public string $contract_type = '';
     public string $email = '';
 
     /**
@@ -16,6 +18,8 @@ new class extends Component {
     public function mount(): void
     {
         $this->name = Auth::user()->name;
+        $this->api_token = Auth::user()->api_token ?? '';
+        $this->contract_type = Auth::user()->contract_type ?? '';
         $this->email = Auth::user()->email;
     }
 
@@ -28,7 +32,8 @@ new class extends Component {
 
         $validated = $this->validate([
             'name' => ['required', 'string', 'max:255'],
-
+            'api_token' => ['required', 'string'],
+            'contract_type' => ['required'],
             'email' => [
                 'required',
                 'string',
@@ -75,6 +80,26 @@ new class extends Component {
     <x-settings.layout :heading="__('Profile')" :subheading="__('Update your name and email address')">
         <form wire:submit="updateProfileInformation" class="my-6 w-full space-y-6">
             <flux:input wire:model="name" :label="__('Name')" type="text" name="name" required autofocus autocomplete="name" />
+
+            <div>
+                <flux:input wire:model="api_token" :label="__('Api token')" type="text" name="api_token" />
+        
+                @error('api_token')
+                    <div class="text-sm text-red-600 mt-2">
+                        {{ $message }}
+                    </div>
+                @enderror
+            </div>     
+            
+            <div>
+                <flux:input wire:model="contract_type" :label="__('Contract type')" type="text" name="contract_type" />
+        
+                @error('contract_type')
+                    <div class="text-sm text-red-600 mt-2">
+                        {{ $message }}
+                    </div>
+                @enderror
+            </div>    
 
             <div>
                 <flux:input wire:model="email" :label="__('Email')" type="email" name="email" required autocomplete="email" />

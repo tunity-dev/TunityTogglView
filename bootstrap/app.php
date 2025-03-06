@@ -11,7 +11,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware) {
-        //
+        $middleware->alias([
+            'ensure.email.domain' => \App\Http\Middleware\EnsureEmailDomain::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
