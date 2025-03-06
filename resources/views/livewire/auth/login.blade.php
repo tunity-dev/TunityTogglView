@@ -73,56 +73,75 @@ new #[Layout('components.layouts.auth')] class extends Component {
     }
 }; ?>
 
-<div class="flex flex-col gap-6">
-    <x-auth-header title="Log in to your account" description="Enter your email and password below to log in" />
+<div class="flex items-center justify-center min-h-screen bg-black-background">
+    <div class="w-full max-w-sm text-white p-8 rounded-lg shadow-lg">
+        <x-auth-header title="TunityTogglView" description="Log in and get tracking!" />
 
-    <!-- Session Status -->
-    <x-auth-session-status class="text-center" :status="session('status')" />
+        <!-- Session Status -->
+        <x-auth-session-status class="text-center text-sm mb-4" :status="session('status')" />
 
-    <form wire:submit="login" class="flex flex-col gap-6">
-        <!-- Email Address -->
-        <flux:input
-            wire:model="email"
-            :label="__('Email address')"
-            type="email"
-            name="email"
-            required
-            autofocus
-            autocomplete="email"
-            placeholder="email@example.com"
-        />
+        <form wire:submit="login" class="flex flex-col gap-6 mt-10">
+            <!-- Email Address -->
+            <div>
+                <label for="email" class="block text-sm font-medium text-gray-300">{{ __('Email') }}</label>
+                <input 
+                    wire:model="email" 
+                    type="email" 
+                    name="email" 
+                    required 
+                    autofocus 
+                    autocomplete="email"
+                    class="mt-2 block w-full px-4 py-3 bg-stone-850 border border-stone-600 rounded-md text-white focus:outline-none focus:ring-1 focus:white"
+                    placeholder="Email Address"
+                />
+            </div>
 
-        <!-- Password -->
-        <div class="relative">
-            <flux:input
-                wire:model="password"
-                :label="__('Password')"
-                type="password"
-                name="password"
-                required
-                autocomplete="current-password"
-                placeholder="Password"
-            />
+            <!-- Password -->
+            <div>
+                <label for="password" class="block text-sm font-medium text-gray-300">{{ __('Password') }}</label>
+                <input 
+                    wire:model="password" 
+                    type="password" 
+                    name="password" 
+                    required 
+                    autocomplete="current-password"
+                    class="mt-2 block w-full px-4 py-3 bg-stone-850 border border-stone-600 rounded-md text-white focus:outline-none focus:ring-1 focus:white"
+                    placeholder="Password"
+                />
+                @if (Route::has('password.request'))
+                    <div class="mt-2 text-sm text-gray-400 text-right">
+                        <flux:link :href="route('password.request')" wire:navigate class="text-[#e8592a] hover:underline">{{ __('Reset password?') }}</flux:link>
+                    </div>
+                @endif
+            </div>
 
-            @if (Route::has('password.request'))
-                <flux:link class="absolute right-0 top-0 text-sm" :href="route('password.request')" wire:navigate>
-                    {{ __('Forgot your password?') }}
-                </flux:link>
-            @endif
+            <!-- Remember Me -->
+            <div class="flex items-center">
+                <input wire:model="remember" type="checkbox" id="remember" class="h-4 w-4 rounded" />
+                <label for="remember" class="ml-2 text-sm text-gray-300">{{ __('Remember me') }}</label>
+            </div>
+
+            <!-- Submit Button -->
+            <div>
+                <div class="flex flex-row gap-4 mt-5">
+                    <!-- Inloggen via Google -->
+                    <flux:button variant="primary" type="button" class="w-full rounded-md text-white bg-stone-700 border-1 hover:bg-amber-700" wire:click="loginWithGoogle">
+                        {{ __('Log in with Google') }}
+                    </flux:button>
+                
+                    <!-- Inloggen via Email -->
+                    <flux:button variant="primary" type="submit" class="w-full rounded-md bg-orange-500 text-white hover:bg-amber-700">
+                        {{ __('Log in') }}
+                    </flux:button>
+                </div>
+                
+            </div>
+        </form>
+
+        <div class="text-center text-sm text-gray-400 mt-4">
+            <flux:link :href="route('register')" wire:navigate>{{ __('Sign up for an account') }}</flux:link>
         </div>
-
-        <!-- Remember Me -->
-        <flux:checkbox wire:model="remember" :label="__('Remember me')" />
-
-        <div class="flex items-center justify-end">
-            <flux:button variant="primary" type="submit" class="w-full">{{ __('Log in') }}</flux:button>
-        </div>
-    </form>
-
-    @if (Route::has('register'))
-      <div class="space-x-1 text-center text-sm text-zinc-600 dark:text-zinc-400">
-          Don't have an account?
-          <flux:link :href="route('register')" wire:navigate>Sign up</flux:link>
-      </div>
-    @endif
+    </div>
 </div>
+
+
