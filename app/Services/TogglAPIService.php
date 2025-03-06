@@ -4,9 +4,12 @@ namespace App\Services;
 
 use AllowDynamicProperties;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use JetBrains\PhpStorm\NoReturn;
+use PDOException;
 
 #[AllowDynamicProperties] class TogglAPIService
 {
@@ -43,6 +46,29 @@ use JetBrains\PhpStorm\NoReturn;
 
         // Filter alleen actieve gebruikers ("inactive": false)
         return $filteredUsers->values();
+    }
+
+
+    public function getActiveUserIds()
+    {
+        $url = "https://api.track.toggl.com/api/v9/organizations/{$this->organizationId}/workspaces/{$this->workspaceId}/workspace_users";
+
+        $response = Http::withBasicAuth($this->apiToken, 'api_token')->get($url);
+
+        if ($response->failed()) {
+            return [];
+        }
+
+        $users = collect($response->json());
+
+        $activeUserIds = [];
+        foreach ($users as $user) {
+            if ($user['inactive'] === false) {
+                $activeUserIds[] = $user['user_id'];
+            }
+        }
+
+        return $activeUserIds;
     }
 
     /**

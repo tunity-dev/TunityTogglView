@@ -6,6 +6,10 @@ use App\Services\TogglAPIService;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
+
 class TogglAPIController extends Controller
 {
     protected TogglAPIService $togglService;
@@ -23,6 +27,11 @@ class TogglAPIController extends Controller
     {
         $activeUsers = $this->togglService->getActiveUsers();
         return response()->json($activeUsers);
+    }
+    public function getActiveUserIds(): JsonResponse
+    {
+        $activeUsersIds = $this->togglService->getActiveUserIds();
+        return response()->json($activeUsersIds);
     }
 
     public function getDetailedTimeEntries()
