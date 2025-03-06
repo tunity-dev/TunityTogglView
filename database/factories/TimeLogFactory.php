@@ -20,13 +20,10 @@ class TimeLogFactory extends Factory
      */
     public function definition(): array
     {
-        $token = Str::random(60);
-        $hashedToken = Hash::make($token);
-
         return [
             'user_id' => User::inRandomOrder()->first()->user_id ?? 1,
             'project_id' => Project::inRandomOrder()->first()->project_id ?? 1,
-            'api_token' => $hashedToken,
+            'api_token' => Str::random(20),
             'start_time' => $this->faker->dateTimeThisMonth(),
             'end_time' => $this->faker->dateTimeThisMonth(),
             'total_time' => $this->faker->numberBetween(30, 480),
