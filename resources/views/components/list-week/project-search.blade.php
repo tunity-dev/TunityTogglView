@@ -1,5 +1,5 @@
 <div class="relative w-64">
-    <input type="text" id="logProject" placeholder="Zoek een project..." 
+    <input type="text" id="logProject" placeholder="Select a project..." 
         class="w-full p-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-gray-900 dark:text-white"
         oninput="filterProjects()" autocomplete="off">
     <ul id="projectList" class="absolute w-full bg-white dark:bg-zinc-800 shadow-md rounded-lg mt-1 hidden max-h-40 overflow-y-auto"></ul>
@@ -29,7 +29,7 @@
                 });
                 ul.style.display = "block";
             })
-            .catch(error => console.error('Fout bij ophalen projecten:', error));
+            .catch(error => console.error('Error while retrieving the projects:', error));
     }
 
     function selectProject(name) {

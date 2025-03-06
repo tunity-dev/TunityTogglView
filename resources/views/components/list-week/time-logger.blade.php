@@ -1,7 +1,7 @@
 <div class="flex justify-between items-center bg-gray-100 dark:bg-zinc-800 p-4 rounded-xl shadow gap-5">
     <x-list-week.project-search />
 
-    <input type="text" id="logDescription" placeholder="Wat ben je aan het doen?" 
+    <input type="text" id="logDescription" placeholder="What are you working on?" 
         class="flex-1 p-2 rounded-lg border border-gray-300 dark:border-zinc-600 bg-white dark:bg-zinc-700 text-gray-900 dark:text-white">
 
     <button id="toggleTimer" class="px-3 py-3 bg-orange-600 text-white hover:bg-orange-700 flex items-center rounded-full">
@@ -27,16 +27,6 @@
         let project = document.getElementById('logProject').value.trim();
 
         if (!activeLog) {
-            if (!description) {
-                alert("Voer een beschrijving in voordat je begint!");
-                return;
-            }
-
-            if (!project) {
-                alert("Selecteer een project voordat je begint!");
-                return;
-            }
-
             startTime = new Date();
             activeLog = document.createElement('div');
             activeLog.classList.add('absolute', 'bg-orange-300', 'dark:bg-orange-700', 'rounded-lg', 'p-2', 'text-xs', 'text-black', 'dark:text-white', 'shadow-md');
@@ -55,6 +45,11 @@
             playIcon.classList.add('hidden');
             stopIcon.classList.remove('hidden');
         } else {
+            if (!description || !project) {
+                alert("Insert a description and project name");
+                return;
+            }
+
             activeLog = null;
             playIcon.classList.remove('hidden');
             stopIcon.classList.add('hidden');
