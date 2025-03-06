@@ -9,6 +9,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
 
 class TogglAPIController extends Controller
 {
@@ -33,6 +35,17 @@ class TogglAPIController extends Controller
         $activeUsersIds = $this->togglService->getActiveUserIds();
         return response()->json($activeUsersIds);
     }
+
+    public function getApiTokensForActiveUsers()
+{
+    // Haal actieve gebruikers op
+    $activeUserIds = $this->togglService->getActiveUserIds();
+
+    // Haal API-tokens op voor deze gebruikers
+    $apiTokens = $this->togglService->getApiTokensForActiveUsers($activeUserIds);
+
+    return response()->json($apiTokens);
+}
 
     public function getDetailedTimeEntries()
     {
@@ -74,11 +87,40 @@ class TogglAPIController extends Controller
         return view('time_entries_summary', ['userSummaries' => $userSummaries]);
     }
 
+    public function showCurrentTimeEntries()
+    {
+        $currentTimeEntries = $this->togglService->getCurrentTimeEntriesForAllUsers();
+        $activeUsers = $this->togglService->getActiveUsers();
+
+        $userNames = collect($activeUsers)->pluck('name', 'id')->toArray();
+        $userNamesToggl = collect($activeUsers)->pluck('name', 'toggl_user_id')->toArray();
+
+        // Format de duration in de controller
+        $formattedTimeEntries = [];
+        foreach ($currentTimeEntries as $userId => $data) {
+            $formattedEntry = $data['entry'];
+            if ($formattedEntry && isset($formattedEntry['duration'])) {
+                $formattedEntry['formatted_duration'] = $this->formatDuration($formattedEntry['duration']);
+            }
+            $formattedTimeEntries[$userId] = [
+                'entry' => $formattedEntry,
+                'last_entry_ago' => $data['last_entry_ago']
+            ];
+        }
+
+        return view('current_time_entries', [
+            'currentTimeEntries' => $formattedTimeEntries,
+            'userNames' => $userNames,
+            'userNamesToggl' => $userNamesToggl
+        ]);
+    }
+
     private function formatDuration($seconds)
     {
-        $hours = floor($seconds / 3600);
-        $minutes = floor(($seconds % 3600) / 60);
-        return sprintf("%02d:%02d", $hours, $minutes);
+        $hours = floor(abs($seconds) / 3600);
+        $minutes = floor((abs($seconds) % 3600) / 60);
+        $seconds = abs($seconds) % 60; // Overgebleven seconden
+        return sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);
     }
 
 }

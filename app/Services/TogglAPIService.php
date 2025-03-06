@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use AllowDynamicProperties;
+use Carbon\Carbon;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -48,7 +49,6 @@ use PDOException;
         return $filteredUsers->values();
     }
 
-
     public function getActiveUserIds()
     {
         $url = "https://api.track.toggl.com/api/v9/organizations/{$this->organizationId}/workspaces/{$this->workspaceId}/workspace_users";
@@ -69,6 +69,48 @@ use PDOException;
         }
 
         return $activeUserIds;
+    }
+
+    public function getApiTokensForActiveUsers(array $userIds)
+    {
+        $defaultToken = "39975c97734e9497678faa171737f280";
+        $apiTokens = [];
+
+        try {
+            // Verbind met de SQLite-database
+            $dbPath = database_path('database.sqlite');
+            $pdo = new \PDO("sqlite:$dbPath");
+
+            // Controleer of de tabel bestaat
+            //$tableExists = $pdo->query("SELECT name FROM sqlite_master WHERE type='table' AND name='users'")->fetchColumn();
+
+            //if ($tableExists) {
+                // Maak een query om tokens op te halen voor de opgegeven user_ids
+                $placeholders = implode(',', array_fill(0, count($userIds), '?'));
+                $query = "SELECT toggl_user_id, api_token FROM users WHERE toggl_user_id IN ($placeholders)";
+                $statement = $pdo->prepare($query);
+
+                // Voer de query uit met de user_ids als parameters
+                $statement->execute($userIds);
+
+                // Haal de resultaten op
+                while ($row = $statement->fetch(\PDO::FETCH_ASSOC)) {
+                    $apiTokens[$row['toggl_user_id']] = $row['api_token'] ?: $defaultToken;
+                }
+           // }
+        } catch (\PDOException $e) {
+            // Log de fout
+            Log::error("Database error: " . $e->getMessage());
+        }
+
+        // Vul ontbrekende toggl_user_ids aan met de default token
+        foreach ($userIds as $userId) {
+            if (!isset($apiTokens[$userId])) {
+                $apiTokens[$userId] = $defaultToken;
+            }
+        }
+
+        return $apiTokens;
     }
 
     /**
@@ -132,5 +174,119 @@ use PDOException;
 
         return $timeEntriesPerUser;
     }
+
+    public function getCurrentTimeEntriesForAllUsers()
+    {
+        $activeUserIds = $this->getActiveUserIds();
+        $apiTokens = $this->getApiTokensForActiveUsers($activeUserIds);
+        $currentEntries = [];
+
+        foreach ($apiTokens as $userId => $apiToken) {
+            $currentEntry = $this->getCurrentTimeEntryForUser($userId, $apiToken);
+
+            if ($currentEntry) {
+                $currentEntries[$userId] = [
+                    'entry' => $currentEntry,
+                    'last_entry_ago' => null // Geen laatste entry ago nodig
+                ];
+            } else {
+                // Haal de laatste time entry op en bereken de 'ago'
+                $lastEntry = $this->getLastTimeEntryForUser($userId, $apiToken);
+
+                if ($lastEntry) {
+                    $lastEntryAgo = Carbon::parse($lastEntry['stop'] ?? $lastEntry['start'])->diffForHumans();
+
+                    $currentEntries[$userId] = [
+                        'entry' => $lastEntry,
+                        'last_entry_ago' => $lastEntryAgo
+                    ];
+                } else {
+                    // Geen entries gevonden
+                    $currentEntries[$userId] = [
+                        'entry' => null,
+                        'last_entry_ago' => 'No entries found'
+                    ];
+                }
+            }
+        }
+
+        return $currentEntries;
+    }
+
+    private function getCurrentTimeEntryForUser($userId, $apiToken)
+    {
+        $url = "https://api.track.toggl.com/api/v9/me/time_entries/current";
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Basic ' . base64_encode($apiToken . ':api_token'),
+            'Content-Type' => 'application/json'
+        ])->get($url);
+
+        if ($response->successful()) {
+            $entry = $response->json();
+            if ($entry) {
+                // Parse de starttijd en zet om naar de juiste tijdzone (+01:00)
+                $startTime = Carbon::parse($entry['start'])->timezone('Europe/Brussels');
+                $now = Carbon::now('Europe/Brussels');
+                $durationInSeconds = $now->diffInSeconds($startTime, false);
+
+                return [
+                    'user_id' => $userId,
+                    'description' => $entry['description'] ?? 'No description',
+                    'project_id' => $entry['project_id'] ?? null,
+                    'start' => $startTime->toDateTimeString(),
+                    'stop' => $entry['stop'] ?? null,
+                    'duration' => $durationInSeconds, // Sla de duur op in seconden
+                    'workspace_id' => $entry['workspace_id'] ?? null,
+                    'running' => true // Voeg een "running" attribuut toe
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    private function getLastTimeEntryForUser($userId, $apiToken)
+    {
+        $url = "https://api.track.toggl.com/api/v9/me/time_entries";
+
+        $response = Http::withHeaders([
+            'Authorization' => 'Basic ' . base64_encode($apiToken . ':api_token'),
+            'Content-Type' => 'application/json'
+        ])->get($url);
+
+        if ($response->successful()) {
+            $time_entries = collect($response->json());
+
+            // Filter out null entries
+            $valid_entries = $time_entries->reject(function ($value) {
+                return is_null($value);
+            });
+
+            // Get the first valid entry (if any)
+            $firstEntry = $valid_entries->first();
+
+            if ($firstEntry) {
+                $duration = $firstEntry['duration'] ?? 0; // Zorg ervoor dat duration bestaat en een numerieke waarde heeft
+                $duration = floatval($duration); // Zet de duration om naar een float
+
+                return [
+                    'toggl_user_id' => $userId,
+                    'description' => $firstEntry['description'] ?? 'No description',
+                    'project_id' => $firstEntry['project_id'] ?? null,
+                    'start' => $firstEntry['start'] ?? null,
+                    'stop' => $firstEntry['stop'] ?? null,
+                    'duration' =>  $duration,
+                    'workspace_id' => $firstEntry['workspace_id'] ?? null
+                ];
+            }
+        } else {
+            Log::error('Toggl API request failed: ' . $response->status() . ' - ' . $response->body());
+        }
+
+        return null;
+    }
+
+
 
 }

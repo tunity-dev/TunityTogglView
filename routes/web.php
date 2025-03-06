@@ -4,6 +4,8 @@ use Livewire\Volt\Volt;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TopUserController;
 use App\Http\Controllers\CompleteRegistrationController;
+use App\Http\Controllers\TogglAPIController;
+
 
 Route::redirect('/', '/login')->name('home');
 // Route::get('/', function () {
@@ -28,4 +30,16 @@ Route::middleware(['auth', 'ensure.email.domain'])->group(function () {
     Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
 });
 
+
 require __DIR__.'/auth.php';
+
+
+Route::get('/GetActiveUsers', [TogglAPIController::class, 'getActiveUsers']);
+Route::get('/GetActiveUsersIds', [TogglAPIController::class, 'getActiveUserIds']);
+
+Route::get('/get-api-tokens', [TogglAPIController::class, 'getApiTokensForActiveUsers']);
+Route::get('/current-entries', [TogglAPIController::class, 'showCurrentTimeEntries']);
+
+
+Route::get('/getDetailedTimeEntries', [TogglAPIController::class, 'getDetailedTimeEntries']);
+
