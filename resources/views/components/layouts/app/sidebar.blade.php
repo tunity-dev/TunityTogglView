@@ -23,7 +23,7 @@
 
             <flux:spacer />
 
-            <!-- Desktop User Menu -->
+            <!-- Desktop user menu -->
             <flux:dropdown position="bottom" align="start">
                 <flux:profile
                     :name="auth()->user()->name"
@@ -69,7 +69,7 @@
             </flux:dropdown>
         </flux:sidebar>
 
-        <!-- Mobile User Menu -->
+        <!-- Mobile user menu -->
         <flux:header class="lg:hidden">
             <flux:sidebar.toggle class="lg:hidden" icon="bars-2" inset="left" />
 
