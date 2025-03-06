@@ -12,6 +12,7 @@ class TimeLog extends Model
     protected $fillable = [
         'user_id',
         'project_id',
+        'api_token',
         'start_time',
         'end_time',
         'total_time',

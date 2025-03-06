@@ -4,6 +4,8 @@ namespace Database\Factories;
 
 use App\Models\User;
 use App\Models\Project;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -18,9 +20,13 @@ class TimeLogFactory extends Factory
      */
     public function definition(): array
     {
+        $token = Str::random(60);
+        $hashedToken = Hash::make($token);
+
         return [
             'user_id' => User::inRandomOrder()->first()->user_id ?? 1,
             'project_id' => Project::inRandomOrder()->first()->project_id ?? 1,
+            'api_token' => $hashedToken,
             'start_time' => $this->faker->dateTimeThisMonth(),
             'end_time' => $this->faker->dateTimeThisMonth(),
             'total_time' => $this->faker->numberBetween(30, 480),
