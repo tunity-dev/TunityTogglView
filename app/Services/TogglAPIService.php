@@ -248,40 +248,45 @@ use PDOException;
 
     private function getLastTimeEntryForUser($userId, $apiToken)
     {
-        $url = "https://api.track.toggl.com/reports/api/v3/workspace/{$this->workspaceId}/search/time_entries";
-
-        $endDate = now()->toDateString();
-        $startDate = now()->subDays(30)->toDateString(); // Kijk 30 dagen terug
-
-        $requestBody = [
-            "start_date" => $startDate,
-            "end_date" => $endDate,
-            "user_ids" => [$userId],
-            "page_size" => 1
-        ];
+        $url = "https://api.track.toggl.com/api/v9/me/time_entries";
 
         $response = Http::withHeaders([
             'Authorization' => 'Basic ' . base64_encode($apiToken . ':api_token'),
             'Content-Type' => 'application/json'
-        ])->post($url, $requestBody);
+        ])->get($url);
 
         if ($response->successful()) {
-            $data = $response->json();
-            if (!empty($data) && isset($data[0]['time_entries'][0])) {
-                $entry = $data[0]['time_entries'][0];
+            $time_entries = collect($response->json());
+
+            // Filter out null entries
+            $valid_entries = $time_entries->reject(function ($value) {
+                return is_null($value);
+            });
+
+            // Get the first valid entry (if any)
+            $firstEntry = $valid_entries->first();
+
+            if ($firstEntry) {
+                $duration = $firstEntry['duration'] ?? 0; // Zorg ervoor dat duration bestaat en een numerieke waarde heeft
+                $duration = floatval($duration); // Zet de duration om naar een float
+
                 return [
-                    'user_id' => $userId,
-                    'description' => $entry['description'] ?? 'No description',
-                    'project_id' => $entry['project_id'] ?? null,
-                    'start' => $entry['start'] ?? null,
-                    'stop' => $entry['stop'] ?? null,
-                    'duration' => $entry['seconds'] ?? 0,
-                    'workspace_id' => $this->workspaceId
+                    'toggl_user_id' => $userId,
+                    'description' => $firstEntry['description'] ?? 'No description',
+                    'project_id' => $firstEntry['project_id'] ?? null,
+                    'start' => $firstEntry['start'] ?? null,
+                    'stop' => $firstEntry['stop'] ?? null,
+                    'duration' =>  $duration,
+                    'workspace_id' => $firstEntry['workspace_id'] ?? null
                 ];
             }
+        } else {
+            Log::error('Toggl API request failed: ' . $response->status() . ' - ' . $response->body());
         }
 
         return null;
     }
+
+
 
 }

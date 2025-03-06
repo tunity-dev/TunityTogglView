@@ -9,6 +9,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Symfony\Component\HttpFoundation\StreamedResponse;
+
 
 class TogglAPIController extends Controller
 {
@@ -115,9 +117,10 @@ class TogglAPIController extends Controller
 
     private function formatDuration($seconds)
     {
-        $hours = floor($seconds / 3600);
-        $minutes = floor(($seconds % 3600) / 60);
-        return sprintf("%02d:%02d", $hours, $minutes);
+        $hours = floor(abs($seconds) / 3600);
+        $minutes = floor((abs($seconds) % 3600) / 60);
+        $seconds = abs($seconds) % 60; // Overgebleven seconden
+        return sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);
     }
 
 }

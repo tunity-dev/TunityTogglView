@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Current Time Entries</title>
+    <meta http-equiv="refresh" content="60">
 </head>
 <body>
 <h1>Current Time Entries</h1>
