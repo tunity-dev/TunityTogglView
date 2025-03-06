@@ -6,6 +6,9 @@ use App\Http\Controllers\TopUserController;
 use App\Http\Controllers\CompleteRegistrationController;
 
 Route::redirect('/', '/login')->name('home');
+// Route::get('/', function () {
+//     return view('welcome');
+// })->name('home');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
