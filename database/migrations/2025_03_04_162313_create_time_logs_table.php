@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id('log_id');
             $table->foreignId('user_id')->constrained('users');
             $table->foreignId('project_id')->constrained('projects');
+            $table->string('api_token');
             $table->timestamp('start_time');
             $table->timestamp('end_time');
             $table->integer('total_time');

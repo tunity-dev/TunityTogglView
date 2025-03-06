@@ -1,11 +1,19 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use Livewire\Volt\Volt;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-})->name('home');
+// Route::get('/', function () {
+//     return view('welcome');
+// })->name('home');
+
+// Als de gebruiker ingelogd is dan wordt de gebruiker doorgestuurd naar de dashboard pagina
+// Als de gebruiker niet ingelogd is dan wordt de gebruiker doorgestuurd naar de login pagina
+Route::get('/', fn () => Auth::check() 
+? redirect('dashboard') 
+: Volt::render('auth.login'))
+->name('login');
 
 Route::view('dashboard', 'dashboard')
     ->middleware(['auth', 'verified'])
