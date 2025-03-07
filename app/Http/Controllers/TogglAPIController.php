@@ -108,7 +108,7 @@ class TogglAPIController extends Controller
             ];
         }
 
-        return view('current_time_entries', [
+        return view('activity-table', [
             'currentTimeEntries' => $formattedTimeEntries,
             'userNames' => $userNames,
             'userNamesToggl' => $userNamesToggl
