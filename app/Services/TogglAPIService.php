@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use AllowDynamicProperties;
+use App\Models\User;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -11,6 +13,11 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use JetBrains\PhpStorm\NoReturn;
 use PDOException;
+use GuzzleHttp\Client;
+use GuzzleHttp\Pool;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Promise;
+use Illuminate\Support\Arr;
 
 #[AllowDynamicProperties] class TogglAPIService
 {
@@ -71,6 +78,31 @@ use PDOException;
         return $activeUserIds;
     }
 
+    public function getUsernameById($userId)
+    {
+        $url = "https://api.track.toggl.com/api/v9/workspaces/{$this->workspaceId}/users";
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Basic ' . base64_encode($this->apiToken . ':api_token'),
+                'Content-Type' => 'application/json'
+            ])->get($url);
+
+            if ($response->successful()) {
+                $users = $response->json();
+                foreach ($users as $user) {
+                    if (isset($user['id']) && $user['id'] == $userId) {
+                        return $user['fullname'] ?? $user['email'] ?? null;
+                    }
+                }
+            }
+        } catch (\Exception $e) {
+            Log::error("Error fetching username for user ID {$userId}: " . $e->getMessage());
+        }
+
+        return null;
+    }
+
     public function getApiTokensForActiveUsers(array $userIds)
     {
         $defaultToken = "39975c97734e9497678faa171737f280";
@@ -113,20 +145,16 @@ use PDOException;
         return $apiTokens;
     }
 
-    /**
-     * @throws ConnectionException
-     */
-    public function getDetailedTimeEntries()
+    public function getWeeklyHours()
     {
         $url = "https://api.track.toggl.com/reports/api/v3/workspace/{$this->workspaceId}/search/time_entries";
-
-        $endDate = now()->toDateString(); // Vandaag
-        $startDate = now()->subDay()->toDateString(); // Gisteren
+        $startDate = now()->startOfWeek(CarbonInterface::MONDAY)->toDateString(); // Maandag van deze week
+        $endDate = now()->endOfWeek(CarbonInterface::SUNDAY)->toDateString(); // Zondag van deze week
 
         $requestBody = [
             "start_date" => $startDate,
             "end_date" => $endDate,
-            "page_size" => 2000000  // Pas dit aan naar behoefte
+            "page_size" => 20000000 // Pas dit aan naar behoefte
         ];
 
         $response = Http::withHeaders([
@@ -140,7 +168,6 @@ use PDOException;
         }
 
         $detailedEntries = collect($response->json());
-
         $timeEntriesPerUser = [];
 
         foreach ($detailedEntries as $entry) {
@@ -150,143 +177,148 @@ use PDOException;
             if (!isset($timeEntriesPerUser[$userId])) {
                 $timeEntriesPerUser[$userId] = [
                     'username' => $username,
-                    'entries' => []
+                    'total_seconds' => 0, // Initialiseer total_seconds
                 ];
             }
-
+            // Accumuleer de total_seconds voor de huidige user
             foreach ($entry['time_entries'] as $timeEntry) {
-                $timeEntriesPerUser[$userId]['entries'][] = [
-                    'id' => $timeEntry['id'],
-                    'description' => $entry['description'],
-                    'project_id' => $entry['project_id'],
-                    'billable' => $entry['billable'],
-                    'start' => $timeEntry['start'],
-                    'stop' => $timeEntry['stop'],
-                    'duration' => $timeEntry['seconds'],
-                    'at' => $timeEntry['at'],
-                    'at_tz' => $timeEntry['at_tz']
-                ];
+                $timeEntriesPerUser[$userId]['total_seconds'] += $timeEntry['seconds'];
             }
         }
 
         // Debug: Toon het resultaat
-        //dd($timeEntriesPerUser);
-
         return $timeEntriesPerUser;
     }
 
     public function getCurrentTimeEntriesForAllUsers()
     {
         $activeUserIds = $this->getActiveUserIds();
-        $apiTokens = $this->getApiTokensForActiveUsers($activeUserIds);
+
+        // Cache de API tokens (geldig voor 60 minuten)
+        $apiTokens = Cache::remember('api_tokens', 60, function () use ($activeUserIds) {
+            return $this->getApiTokensForActiveUsers($activeUserIds);
+        });
+
         $currentEntries = [];
+        $client = new Client();
+        $concurrency = 10; // Pas dit aan, maar wees voorzichtig met rate limiting
 
-        foreach ($apiTokens as $userId => $apiToken) {
-            $currentEntry = $this->getCurrentTimeEntryForUser($userId, $apiToken);
+        $requests = function () use ($apiTokens, $client) {
+            foreach ($apiTokens as $userId => $apiToken) {
+                $url = "https://api.track.toggl.com/api/v9/me/time_entries/current";
+                $request = new Request('GET', $url, [
+                    'Authorization' => 'Basic ' . base64_encode($apiToken . ':api_token'),
+                    'Content-Type' => 'application/json'
+                ]);
 
-            if ($currentEntry) {
-                $currentEntries[$userId] = [
-                    'entry' => $currentEntry,
-                    'last_entry_ago' => null // Geen laatste entry ago nodig
-                ];
-            } else {
-                // Haal de laatste time entry op en bereken de 'ago'
-                $lastEntry = $this->getLastTimeEntryForUser($userId, $apiToken);
+                yield function () use ($client, $request, $userId, $apiToken) {
+                    return $client->sendAsync($request)
+                        ->then(
+                            function ($response) use ($userId, $apiToken) {
+                                $data = json_decode($response->getBody(), true);
+                                if ($data) {
+                                    // Timezone handling
+                                    try {
+                                        $startTime = Carbon::parse($data['start'])->timezone('Europe/Brussels');
+                                        $now = Carbon::now('Europe/Brussels');
+                                        $durationInSeconds = $now->diffInSeconds($startTime, false);
 
-                if ($lastEntry) {
-                    $lastEntryAgo = Carbon::parse($lastEntry['stop'] ?? $lastEntry['start'])->diffForHumans();
+                                        return [
+                                            'user_id' => $userId,
+                                            'entry' => [
+                                                'description' => $data['description'] ?? 'No description',
+                                                'project_id' => $data['project_id'] ?? null,
+                                                'start' => $startTime->toDateTimeString(),
+                                                'stop' => $data['stop'] ?? null,
+                                                'duration' => $durationInSeconds,
+                                                'workspace_id' => $data['workspace_id'] ?? null,
+                                                'running' => true,
+                                            ],
+                                            'last_entry_ago' => null,
+                                        ];
 
-                    $currentEntries[$userId] = [
-                        'entry' => $lastEntry,
-                        'last_entry_ago' => $lastEntryAgo
-                    ];
-                } else {
-                    // Geen entries gevonden
-                    $currentEntries[$userId] = [
-                        'entry' => null,
-                        'last_entry_ago' => 'No entries found'
-                    ];
-                }
+                                    } catch (\Exception $e) {
+                                        Log::error("Error parsing date for user ID {$userId}: " . $e->getMessage());
+                                        return [
+                                            'user_id' => $userId,
+                                            'entry' => null,
+                                            'last_entry_ago' => 'Error parsing date'
+                                        ];
+                                    }
+
+                                } else {
+                                    $lastEntry = $this->getLastTimeEntryForUser($userId, $apiToken);
+
+                                    if ($lastEntry) {
+                                        try {
+                                            $lastEntryAgo = Carbon::parse($lastEntry['stop'] ?? $lastEntry['start'])->diffForHumans();
+                                            return [
+                                                'user_id' => $userId,
+                                                'entry' => $lastEntry,
+                                                'last_entry_ago' => $lastEntryAgo,
+                                            ];
+                                        } catch (\Exception $e) {
+                                            Log::error("Error parsing date for last entry user ID {$userId}: " . $e->getMessage());
+                                            return [
+                                                'user_id' => $userId,
+                                                'entry' => null,
+                                                'last_entry_ago' => 'Error parsing date'
+                                            ];
+                                        }
+
+                                    } else {
+                                        return [
+                                            'user_id' => $userId,
+                                            'entry' => null,
+                                            'last_entry_ago' => 'No entries found',
+                                        ];
+                                    }
+                                }
+                            },
+                            function ($exception) use ($userId) {
+                                Log::error("Error fetching time entry for user ID {$userId}: " . $exception->getMessage());
+                                return [
+                                    'user_id' => $userId,
+                                    'entry' => null,
+                                    'last_entry_ago' => 'Error fetching data',
+                                ];
+                            }
+                        );
+                };
             }
-        }
+        };
+
+        $pool = new Pool($client, $requests(), [
+            'concurrency' => $concurrency,
+            'fulfilled' => function ($response, $index) use (&$currentEntries, $apiTokens) {
+                $userId = array_keys($apiTokens)[$index];
+                $currentEntries[$userId] = $response;
+            },
+            'rejected' => function ($reason, $index) use (&$currentEntries, $apiTokens) {
+                $userId = array_keys($apiTokens)[$index];
+                Log::error("Request {$index} failed: " . $reason);
+                $currentEntries[$userId] = [
+                    'entry' => null,
+                    'last_entry_ago' => 'Request failed',
+                ];
+            },
+        ]);
+
+        $promise = $pool->promise();
+        $promise->wait();
+
+        // Haal gebruikersnamen op uit de database
+        $usernames = User::whereIn('toggl_user_id', array_keys($currentEntries))
+            ->pluck('name', 'toggl_user_id')
+            ->toArray();
+
+        // Sorteer de resultaten op basis van de gebruikersnaam
+        uasort($currentEntries, function ($a, $b) use ($usernames) {
+            $nameA = $usernames[$a['user_id']] ?? '';
+            $nameB = $usernames[$b['user_id']] ?? '';
+            return strcasecmp($nameA, $nameB);
+        });
 
         return $currentEntries;
     }
-
-    private function getCurrentTimeEntryForUser($userId, $apiToken)
-    {
-        $url = "https://api.track.toggl.com/api/v9/me/time_entries/current";
-
-        $response = Http::withHeaders([
-            'Authorization' => 'Basic ' . base64_encode($apiToken . ':api_token'),
-            'Content-Type' => 'application/json'
-        ])->get($url);
-
-        if ($response->successful()) {
-            $entry = $response->json();
-            if ($entry) {
-                // Parse de starttijd en zet om naar de juiste tijdzone (+01:00)
-                $startTime = Carbon::parse($entry['start'])->timezone('Europe/Brussels');
-                $now = Carbon::now('Europe/Brussels');
-                $durationInSeconds = $now->diffInSeconds($startTime, false);
-
-                return [
-                    'user_id' => $userId,
-                    'description' => $entry['description'] ?? 'No description',
-                    'project_id' => $entry['project_id'] ?? null,
-                    'start' => $startTime->toDateTimeString(),
-                    'stop' => $entry['stop'] ?? null,
-                    'duration' => $durationInSeconds, // Sla de duur op in seconden
-                    'workspace_id' => $entry['workspace_id'] ?? null,
-                    'running' => true // Voeg een "running" attribuut toe
-                ];
-            }
-        }
-
-        return null;
-    }
-
-    private function getLastTimeEntryForUser($userId, $apiToken)
-    {
-        $url = "https://api.track.toggl.com/api/v9/me/time_entries";
-
-        $response = Http::withHeaders([
-            'Authorization' => 'Basic ' . base64_encode($apiToken . ':api_token'),
-            'Content-Type' => 'application/json'
-        ])->get($url);
-
-        if ($response->successful()) {
-            $time_entries = collect($response->json());
-
-            // Filter out null entries
-            $valid_entries = $time_entries->reject(function ($value) {
-                return is_null($value);
-            });
-
-            // Get the first valid entry (if any)
-            $firstEntry = $valid_entries->first();
-
-            if ($firstEntry) {
-                $duration = $firstEntry['duration'] ?? 0; // Zorg ervoor dat duration bestaat en een numerieke waarde heeft
-                $duration = floatval($duration); // Zet de duration om naar een float
-
-                return [
-                    'toggl_user_id' => $userId,
-                    'description' => $firstEntry['description'] ?? 'No description',
-                    'project_id' => $firstEntry['project_id'] ?? null,
-                    'start' => $firstEntry['start'] ?? null,
-                    'stop' => $firstEntry['stop'] ?? null,
-                    'duration' =>  $duration,
-                    'workspace_id' => $firstEntry['workspace_id'] ?? null
-                ];
-            }
-        } else {
-            Log::error('Toggl API request failed: ' . $response->status() . ' - ' . $response->body());
-        }
-
-        return null;
-    }
-
-
-
 }

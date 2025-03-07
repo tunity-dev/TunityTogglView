@@ -2,7 +2,6 @@
 
 use Livewire\Volt\Volt;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\TopUserController;
 use App\Http\Controllers\CompleteRegistrationController;
 use App\Http\Controllers\TogglAPIController;
 
@@ -19,7 +18,7 @@ Route::view('dashboard', 'dashboard')
 Route::get('/complete-registration', [CompleteRegistrationController::class, 'showForm'])->name('complete.registration');
 Route::post('/complete-registration', [CompleteRegistrationController::class, 'saveDetails']);
 
-Route::get('/top-workers', [TopUserController::class, 'index'])->name('top-workers');
+Route::get('/top-workers', [TogglAPIController::class, 'showDashboard'])->name('top-workers');
 
 // Route::middleware(['auth'])->group(function () {
 Route::middleware(['auth', 'ensure.email.domain'])->group(function () {
@@ -32,14 +31,4 @@ Route::middleware(['auth', 'ensure.email.domain'])->group(function () {
 
 
 require __DIR__.'/auth.php';
-
-
-Route::get('/GetActiveUsers', [TogglAPIController::class, 'getActiveUsers']);
-Route::get('/GetActiveUsersIds', [TogglAPIController::class, 'getActiveUserIds']);
-
-Route::get('/get-api-tokens', [TogglAPIController::class, 'getApiTokensForActiveUsers']);
-Route::get('/current-entries', [TogglAPIController::class, 'showCurrentTimeEntries']);
-
-
-Route::get('/getDetailedTimeEntries', [TogglAPIController::class, 'getDetailedTimeEntries']);
 
