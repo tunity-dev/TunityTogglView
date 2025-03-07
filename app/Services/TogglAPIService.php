@@ -145,6 +145,9 @@ use Illuminate\Support\Arr;
         return $apiTokens;
     }
 
+    /**
+     * @throws ConnectionException
+     */
     public function getWeeklyHours()
     {
         $url = "https://api.track.toggl.com/reports/api/v3/workspace/{$this->workspaceId}/search/time_entries";

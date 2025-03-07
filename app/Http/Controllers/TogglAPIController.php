@@ -55,6 +55,13 @@ class TogglAPIController extends Controller
         return sprintf("%02d:%02d:%02d", $hours, $minutes, $seconds);
     }
 
+    private function formatDurationTotalHours($seconds)
+    {
+        $hours = floor(abs($seconds) / 3600);
+        $minutes = floor((abs($seconds) % 3600) / 60);
+        return sprintf("%02du%02d", $hours, $minutes);
+    }
+
     public function getWeeklyHours()
     {
         $weeklyHours = $this->togglService->getWeeklyHours();
@@ -67,7 +74,7 @@ class TogglAPIController extends Controller
             $formattedWeeklyHours[$userId] = [
                 'username' => $data['username'] ?? 'Unknown User',
                 'total_hours_decimal' => round($data['total_seconds'] / 3600, 2),
-                'total_hours' => $this->formatDuration($data['total_seconds'] ?? 0)
+                'total_hours' => $this->formatDurationTotalHours($data['total_seconds'] ?? 0)
             ];
         }
 
