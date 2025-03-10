@@ -18,11 +18,13 @@ class CompleteRegistrationController extends Controller
         $request->validate([
             'contract_id' => 'required|integer',
             'toggl_user_id' => 'required|string',
+            'api_token' => 'required|string',
         ]);
 
         $user = auth()->user();
         $user->contract_id = $request->contract_id;
         $user->toggl_user_id = $request->toggl_user_id;
+        $user->api_token = $request->api_token;
         $user->save();
 
         // Redirect naar het dashboard na succesvolle registratie

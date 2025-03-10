@@ -60,6 +60,19 @@
                         />
                     </div>
 
+                    <!-- API token -->
+                    <div>
+                        <label for="api_token" class="block text-sm font-medium text-gray-300">{{ __('API token') }}</label>
+                        <input 
+                            id="api_token" 
+                            type="text" 
+                            name="api_token" 
+                            required 
+                            class="mt-2 block w-full px-4 py-3 bg-stone-850 border border-stone-600 rounded-md text-white focus:outline-none focus:ring-1 focus:white"
+                            placeholder="API token"
+                        />
+                    </div>
+
                     <div class="flex flex-row gap-4 mt-5">
                         <flux:button type="submit" class="w-full rounded-md bg-orange-500 text-white hover:bg-amber-700">
                             {{ __('Complete registration') }}
