@@ -117,12 +117,13 @@ new #[Layout('components.layouts.auth')] class extends Component {
             />
 
             <div class="flex flex-row gap-4 mt-5">
-                <!-- Inloggen via Google -->
-                <flux:button variant="primary" type="button" class="w-full rounded-md text-white bg-stone-700 border-1 hover:bg-amber-700" wire:click="loginWithGoogle">
-                    {{ __('Sign up with Google') }}
-                </flux:button>
+                <!-- Registreren via Google -->
+                <a href="{{ route('auth.google.redirect', ['action' => 'register']) }}" 
+                    class="w-full rounded-md text-black bg-white hover:bg-orange-500 hover:text-white py-2 flex items-center justify-center text-center">
+                    Google
+                </a>
             
-                <!-- Inloggen via Email -->
+                <!-- Registreren via Email -->
                 <flux:button variant="primary" type="submit" class="w-full rounded-md bg-orange-500 text-white hover:bg-amber-700">
                     {{ __('Sign up') }}
                 </flux:button>

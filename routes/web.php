@@ -3,8 +3,9 @@
 use Livewire\Volt\Volt;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TopUserController;
-use App\Http\Controllers\CompleteRegistrationController;
 use App\Http\Controllers\TogglAPIController;
+use App\Http\Controllers\GoogleAuthController;
+use App\Http\Controllers\CompleteRegistrationController;
 
 
 Route::redirect('/', '/login')->name('home');
@@ -29,6 +30,12 @@ Route::middleware(['auth', 'ensure.email.domain'])->group(function () {
     Volt::route('settings/password', 'settings.password')->name('settings.password');
     Volt::route('settings/appearance', 'settings.appearance')->name('settings.appearance');
 });
+
+// Route to redirect to Google's OAuth page
+Route::get('/auth/google/redirect', [GoogleAuthController::class, 'redirect'])->name('auth.google.redirect');
+
+// Route to handle the callback from Google
+Route::get('/auth/google/callback', [GoogleAuthController::class, 'callback'])->name('auth.google.callback');
 
 
 require __DIR__.'/auth.php';
